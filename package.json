@@ -1,0 +1,672 @@
+{
+  "name": "c-style-guide",
+  "displayName": "C Style Guide",
+  "description": "Generates file & function headers and highlights every violation of the course C coding style guide (naming, indentation, braces, deductions, memory checks, -Wall).",
+  "version": "1.0.0",
+  "publisher": "local",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Linters",
+    "Formatters",
+    "Snippets"
+  ],
+  "keywords": [
+    "c",
+    "style guide",
+    "doxygen",
+    "linter"
+  ],
+  "main": "./extension.js",
+  "activationEvents": [
+    "onLanguage:c"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "cStyle.insertFileHeader",
+        "title": "Insert File Header",
+        "category": "C Style"
+      },
+      {
+        "command": "cStyle.insertFunctionHeader",
+        "title": "Insert/Update Function Header at Cursor",
+        "category": "C Style"
+      },
+      {
+        "command": "cStyle.generateAllHeaders",
+        "title": "Generate All Missing Headers",
+        "category": "C Style"
+      },
+      {
+        "command": "cStyle.fixAll",
+        "title": "Fix All Auto-Fixable Problems",
+        "category": "C Style"
+      },
+      {
+        "command": "cStyle.fixAllIncludingRenames",
+        "title": "Fix All Problems Including Naming (Renames)",
+        "category": "C Style"
+      },
+      {
+        "command": "cStyle.compile",
+        "title": "Check Compiler Warnings (-Wall -Wextra -pedantic -std=c17)",
+        "category": "C Style"
+      },
+      {
+        "command": "cStyle.checkGitIdentity",
+        "title": "Check Git Name & Student Email",
+        "category": "C Style"
+      },
+      {
+        "command": "cStyle.setMatriculationNumber",
+        "title": "Set Matriculation Number",
+        "category": "C Style"
+      },
+      {
+        "command": "cStyle.openGuide",
+        "title": "Open Style Guide",
+        "category": "C Style"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "cStyle.insertFunctionHeader",
+          "when": "editorLangId == c",
+          "group": "1_modification@90"
+        },
+        {
+          "command": "cStyle.fixAll",
+          "when": "editorLangId == c",
+          "group": "1_modification@91"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "cStyle.insertFunctionHeader",
+        "key": "ctrl+alt+h",
+        "mac": "cmd+alt+h",
+        "when": "editorTextFocus && editorLangId == c"
+      },
+      {
+        "command": "cStyle.fixAll",
+        "key": "ctrl+alt+f",
+        "mac": "cmd+alt+f",
+        "when": "editorTextFocus && editorLangId == c"
+      }
+    ],
+    "configurationDefaults": {
+      "[c]": {
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true,
+        "editor.detectIndentation": false,
+        "editor.rulers": [
+          120
+        ]
+      }
+    },
+    "configuration": {
+      "title": "C Style Guide",
+      "properties": {
+        "cStyle.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable style checking for C files."
+        },
+        "cStyle.matriculationNumber": {
+          "type": "string",
+          "default": "",
+          "description": "Your matriculation number, used for '/// Author:' in the file header."
+        },
+        "cStyle.autoFileHeader": {
+          "type": "boolean",
+          "default": true,
+          "description": "Insert the file header automatically into new, empty .c files (and on save if it is missing)."
+        },
+        "cStyle.headersOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "On save, add missing function headers and update @param/@return lines of existing headers to match the signature."
+        },
+        "cStyle.compileOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "On save, compile with the course flags and show compiler warnings (-10% deduction each submission)."
+        },
+        "cStyle.compiler.path": {
+          "type": "string",
+          "default": "clang",
+          "description": "Compiler executable."
+        },
+        "cStyle.compiler.args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "-Wall",
+            "-Wextra",
+            "-pedantic",
+            "-std=c17"
+          ],
+          "description": "Compiler flags (the course compiles with these)."
+        },
+        "cStyle.checkGitIdentity": {
+          "type": "boolean",
+          "default": true,
+          "description": "On startup, check that git user.name is your full name and user.email is set (and matches cStyle.git.requiredEmailDomain if configured)."
+        },
+        "cStyle.maxLineLength": {
+          "type": "number",
+          "default": 120,
+          "description": "Maximum line length."
+        },
+        "cStyle.maxFunctionLines": {
+          "type": "number",
+          "default": 70,
+          "description": "Maximum lines of code per function (blank and comment lines are not counted)."
+        },
+        "cStyle.maxParameters": {
+          "type": "number",
+          "default": 6,
+          "description": "Maximum number of function parameters."
+        },
+        "cStyle.warnNestingDepth": {
+          "type": "number",
+          "default": 4,
+          "description": "Warn when control-structure nesting exceeds this depth."
+        },
+        "cStyle.maxNestingDepth": {
+          "type": "number",
+          "default": 6,
+          "description": "Nesting above this depth is a -10% deduction."
+        },
+        "cStyle.mainMaxLines": {
+          "type": "number",
+          "default": 30,
+          "description": "Hint when main() is longer than this (main should only call subfunctions)."
+        },
+        "cStyle.allowedNumbers": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "default": [
+            0,
+            1
+          ],
+          "description": "Numeric literals that are not reported as hardcoded values."
+        },
+        "cStyle.rules": {
+          "type": "object",
+          "default": {},
+          "description": "Override the severity of individual rules, or turn them off.",
+          "properties": {
+            "file-header": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: warning"
+            },
+            "function-header": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: warning"
+            },
+            "header-placeholder": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: warning"
+            },
+            "naming-variable": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: warning"
+            },
+            "naming-function": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: warning"
+            },
+            "naming-constant": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: warning"
+            },
+            "naming-member": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: warning"
+            },
+            "naming-type": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: warning"
+            },
+            "naming-tag": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: warning"
+            },
+            "meaningful-name": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: information"
+            },
+            "nested-loop-counter": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: warning"
+            },
+            "commented-code": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: warning"
+            },
+            "magic-number": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: information"
+            },
+            "pointer-style": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: information"
+            },
+            "english-only": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: information"
+            },
+            "operator-spacing": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: warning"
+            },
+            "one-statement-per-line": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: warning"
+            },
+            "chained-declaration": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: warning"
+            },
+            "brace-own-line": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: warning"
+            },
+            "indentation": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: warning"
+            },
+            "no-tabs": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: warning"
+            },
+            "line-length": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: warning"
+            },
+            "duplicate-code": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: information"
+            },
+            "nesting-depth": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: warning"
+            },
+            "unreachable-code": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: warning"
+            },
+            "unnecessary-negation": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: hint"
+            },
+            "main-logic": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: information"
+            },
+            "too-many-params": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: warning"
+            },
+            "function-length": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: warning"
+            },
+            "recursion": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: information"
+            },
+            "max-nesting": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: error"
+            },
+            "stderr-output": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: error"
+            },
+            "compiler-warning": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: error"
+            },
+            "forbidden-construct": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: error"
+            },
+            "global-variable": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: error"
+            },
+            "static-local": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: warning"
+            },
+            "non-standard-header": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: error"
+            },
+            "alloc-null-check": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: error"
+            },
+            "realloc-temp": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: error"
+            },
+            "fopen-null-check": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "information",
+                "hint",
+                "off"
+              ],
+              "description": "default: error"
+            }
+          },
+          "additionalProperties": false
+        },
+        "cStyle.git.requiredEmailDomain": {
+          "type": "string",
+          "default": "",
+          "description": "If set (e.g. 'example.edu'), the Git identity check requires user.email to end with @<domain>."
+        },
+        "cStyle.guideUrl": {
+          "type": "string",
+          "default": "",
+          "description": "Link to your style guide. If set, every problem links to it and 'Open Style Guide' opens it."
+        }
+      }
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "local"
+  },
+  "scripts": {
+    "test": "node test/test.js"
+  }
+}
